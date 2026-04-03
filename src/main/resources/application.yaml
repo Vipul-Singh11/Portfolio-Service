@@ -1,0 +1,33 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: portfolio-service
+
+  datasource:
+    url: jdbc:mysql://localhost:3307/portfolio_db
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  redis:
+    host: localhost
+    port: 6379
+
+services:
+  user:
+    base-url: http://localhost:8081/api/users
+
+logging:
+  level:
+    root: INFO
+    com.stock.portfolio_service: DEBUG
