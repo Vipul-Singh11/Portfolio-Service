@@ -33,7 +33,4 @@ public class Portfolio {
 
     @Column(nullable = false)
     private Integer quantity;
-
-    @Version
-    private Long version;
 }
