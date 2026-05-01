@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.stock.portfolio_service.client.StockPriceClient;
+import com.stock.portfolio_service.client.UserClient;
 import com.stock.portfolio_service.dto.PortfolioResponseDto;
 import com.stock.portfolio_service.dto.PortfolioSummaryDto;
 import com.stock.portfolio_service.dto.TradeEventDto;
@@ -29,6 +30,7 @@ public class PortfolioServiceImpl implements PortfolioService {
     private final PortfolioRepository repository;
     private final ProcessedTradeRepository processedTradeRepository;
     private final StockPriceClient stockPriceClient;
+    private final UserClient userClient;   // 🔥 NEW
 
     @Override
     @Transactional
@@ -45,7 +47,12 @@ public class PortfolioServiceImpl implements PortfolioService {
         Long buyerId = trade.getBuyerUserId();
         Long sellerId = trade.getSellerUserId();
 
-        // 🔵 BUYER
+        BigDecimal totalAmount = trade.getPrice()
+                .multiply(BigDecimal.valueOf(trade.getQuantity()));
+
+        userClient.debit(buyerId, totalAmount);
+
+        userClient.credit(sellerId, totalAmount);
         Portfolio buyerPortfolio = repository
                 .findByUserIdAndStockSymbol(buyerId, trade.getStockSymbol())
                 .orElse(Portfolio.builder()
@@ -57,7 +64,6 @@ public class PortfolioServiceImpl implements PortfolioService {
         buyerPortfolio.setQuantity(buyerPortfolio.getQuantity() + trade.getQuantity());
         repository.save(buyerPortfolio);
 
-        // 🔴 SELLER
         Portfolio sellerPortfolio = repository
                 .findByUserIdAndStockSymbol(sellerId, trade.getStockSymbol())
                 .orElseThrow(() -> new InvalidTradeException("Seller portfolio not found"));
@@ -96,7 +102,7 @@ public class PortfolioServiceImpl implements PortfolioService {
                 .collect(Collectors.toList());
     }
 
-   @Override
+    @Override
     public PortfolioSummaryDto getPortfolioSummary(Long userId) {
 
         List<Portfolio> portfolios = repository.findAllByUserId(userId);
@@ -147,7 +153,7 @@ public class PortfolioServiceImpl implements PortfolioService {
             throw new InvalidTradeException("Buyer/Seller IDs are required");
         }
 
-        if (trade.getQuantity() == null || trade.getQuantity() <= 0) {
+        if (trade.getQuantity() <= 0) {
             throw new InvalidTradeException("Quantity must be positive");
         }
 
