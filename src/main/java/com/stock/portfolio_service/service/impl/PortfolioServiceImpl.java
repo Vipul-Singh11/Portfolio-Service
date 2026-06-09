@@ -18,7 +18,10 @@ import com.stock.portfolio_service.exception.InvalidTradeException;
 import com.stock.portfolio_service.repository.PortfolioRepository;
 import com.stock.portfolio_service.repository.ProcessedTradeRepository;
 import com.stock.portfolio_service.service.PortfolioService;
-
+import com.stock.portfolio_service.entity.TradeHistory;
+import com.stock.portfolio_service.repository.TradeHistoryRepository;
+import com.stock.portfolio_service.dto.TradeHistoryResponseDto;
+import com.stock.portfolio_service.entity.TradeHistory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -30,7 +33,8 @@ public class PortfolioServiceImpl implements PortfolioService {
     private final PortfolioRepository repository;
     private final ProcessedTradeRepository processedTradeRepository;
     private final StockPriceClient stockPriceClient;
-    private final UserClient userClient;   // 🔥 NEW
+    private final TradeHistoryRepository tradeHistoryRepository;
+    private final UserClient userClient;
 
     @Override
     @Transactional
@@ -80,6 +84,20 @@ public class PortfolioServiceImpl implements PortfolioService {
             sellerPortfolio.setQuantity(updatedQty);
             repository.save(sellerPortfolio);
         }
+
+        tradeHistoryRepository.save(
+            TradeHistory.builder()
+                    .tradeId(trade.getTradeId())
+                    .buyOrderId(trade.getBuyOrderId())
+                    .sellOrderId(trade.getSellOrderId())
+                    .buyerUserId(trade.getBuyerUserId())
+                    .sellerUserId(trade.getSellerUserId())
+                    .stockSymbol(trade.getStockSymbol())
+                    .quantity(trade.getQuantity())
+                    .price(trade.getPrice())
+                    .executionTime(trade.getExecutionTime())
+                    .build()
+        );
 
         processedTradeRepository.save(
                 ProcessedTrade.builder()
@@ -160,5 +178,26 @@ public class PortfolioServiceImpl implements PortfolioService {
         if (trade.getStockSymbol() == null || trade.getStockSymbol().isBlank()) {
             throw new InvalidTradeException("Stock symbol is required");
         }
+    }
+
+    @Override
+    public List<TradeHistoryResponseDto> getTradeHistory(Long userId) {
+
+        return tradeHistoryRepository
+                .findByBuyerUserIdOrSellerUserIdOrderByExecutionTimeDesc(
+                        userId,
+                        userId)
+                .stream()
+                .map(trade ->
+                        TradeHistoryResponseDto.builder()
+                                .tradeId(trade.getTradeId())
+                                .buyerUserId(trade.getBuyerUserId())
+                                .sellerUserId(trade.getSellerUserId())
+                                .stockSymbol(trade.getStockSymbol())
+                                .quantity(trade.getQuantity())
+                                .price(trade.getPrice())
+                                .executionTime(trade.getExecutionTime())
+                                .build())
+                .toList();
     }
 }
