@@ -10,6 +10,12 @@ import lombok.*;
 public class PortfolioResponseDto {
 
     private Long userId;
+
     private String stockSymbol;
+
     private Integer quantity;
+
+    private Integer reservedQuantity;
+
+    private Integer availableQuantity;
 }

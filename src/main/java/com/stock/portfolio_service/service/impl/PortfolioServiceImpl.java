@@ -21,7 +21,6 @@ import com.stock.portfolio_service.service.PortfolioService;
 import com.stock.portfolio_service.entity.TradeHistory;
 import com.stock.portfolio_service.repository.TradeHistoryRepository;
 import com.stock.portfolio_service.dto.TradeHistoryResponseDto;
-import com.stock.portfolio_service.entity.TradeHistory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -60,10 +59,11 @@ public class PortfolioServiceImpl implements PortfolioService {
         Portfolio buyerPortfolio = repository
                 .findByUserIdAndStockSymbol(buyerId, trade.getStockSymbol())
                 .orElse(Portfolio.builder()
-                        .userId(buyerId)
-                        .stockSymbol(trade.getStockSymbol())
-                        .quantity(0)
-                        .build());
+                .userId(buyerId)
+                .stockSymbol(trade.getStockSymbol())
+                .quantity(0)
+                .reservedQuantity(0)
+                .build());
 
         buyerPortfolio.setQuantity(buyerPortfolio.getQuantity() + trade.getQuantity());
         repository.save(buyerPortfolio);
@@ -110,12 +110,16 @@ public class PortfolioServiceImpl implements PortfolioService {
 
     @Override
     public List<PortfolioResponseDto> getUserPortfolio(Long userId) {
+
         return repository.findAllByUserId(userId)
                 .stream()
                 .map(p -> PortfolioResponseDto.builder()
                         .userId(p.getUserId())
                         .stockSymbol(p.getStockSymbol())
                         .quantity(p.getQuantity())
+                        .reservedQuantity(p.getReservedQuantity())
+                        .availableQuantity(
+                                p.getQuantity() - p.getReservedQuantity())
                         .build())
                 .collect(Collectors.toList());
     }
@@ -138,11 +142,13 @@ public class PortfolioServiceImpl implements PortfolioService {
             currentValue = currentValue.add(value);
 
             holdings.add(
-                    PortfolioResponseDto.builder()
-                            .userId(p.getUserId())
-                            .stockSymbol(p.getStockSymbol())
-                            .quantity(p.getQuantity())
-                            .build()
+                        PortfolioResponseDto.builder()
+                                .userId(p.getUserId())
+                                .stockSymbol(p.getStockSymbol())
+                                .quantity(p.getQuantity())
+                                .reservedQuantity(p.getReservedQuantity())
+                                .availableQuantity(p.getQuantity() - p.getReservedQuantity())
+                                .build()
             );
         }
 
@@ -199,5 +205,96 @@ public class PortfolioServiceImpl implements PortfolioService {
                                 .executionTime(trade.getExecutionTime())
                                 .build())
                 .toList();
+    }
+
+    @Override
+    public void reserveShares(
+            Long userId,
+            String stockSymbol,
+            Integer quantity) {
+
+        Portfolio portfolio = repository
+                .findByUserIdAndStockSymbol(
+                        userId,
+                        stockSymbol)
+                .orElseThrow(() ->
+                        new InvalidTradeException(
+                                "Portfolio not found"));
+
+        int availableQuantity =
+                portfolio.getQuantity()
+                        - portfolio.getReservedQuantity();
+
+        if (availableQuantity < quantity) {
+
+            throw new InvalidTradeException(
+                    "Insufficient available shares");
+        }
+
+        portfolio.setReservedQuantity(
+                portfolio.getReservedQuantity() + quantity);
+
+        repository.save(portfolio);
+    }
+    
+    @Override
+    public void releaseReservedShares(
+            Long userId,
+            String stockSymbol,
+            Integer quantity) {
+
+        Portfolio portfolio = repository
+                .findByUserIdAndStockSymbol(
+                        userId,
+                        stockSymbol)
+                .orElseThrow(() ->
+                        new InvalidTradeException(
+                                "Portfolio not found"));
+
+        if (portfolio.getReservedQuantity() < quantity) {
+
+            throw new InvalidTradeException(
+                    "Reserved quantity cannot become negative");
+        }
+
+        portfolio.setReservedQuantity(
+                portfolio.getReservedQuantity() - quantity);
+
+        repository.save(portfolio);
+    }
+
+    @Override
+    public void consumeReservedShares(
+            Long userId,
+            String stockSymbol,
+            Integer quantity) {
+
+        Portfolio portfolio = repository
+                .findByUserIdAndStockSymbol(
+                        userId,
+                        stockSymbol)
+                .orElseThrow(() ->
+                        new InvalidTradeException(
+                                "Portfolio not found"));
+
+        if (portfolio.getReservedQuantity() < quantity) {
+
+            throw new InvalidTradeException(
+                    "Insufficient reserved shares");
+        }
+
+        if (portfolio.getQuantity() < quantity) {
+
+            throw new InvalidTradeException(
+                    "Insufficient shares");
+        }
+
+        portfolio.setReservedQuantity(
+                portfolio.getReservedQuantity() - quantity);
+
+        portfolio.setQuantity(
+                portfolio.getQuantity() - quantity);
+
+        repository.save(portfolio);
     }
 }

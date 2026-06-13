@@ -16,4 +16,19 @@ public interface PortfolioService {
     PortfolioSummaryDto getPortfolioSummary(Long userId);
 
     List<TradeHistoryResponseDto> getTradeHistory(Long userId);
+
+    void reserveShares(
+            Long userId,
+            String stockSymbol,
+            Integer quantity);
+
+    void releaseReservedShares(
+            Long userId,
+            String stockSymbol,
+            Integer quantity);
+
+    void consumeReservedShares(
+            Long userId,
+            String stockSymbol,
+            Integer quantity);
 }

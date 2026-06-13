@@ -41,4 +41,49 @@ public class PortfolioController {
         return ResponseEntity.ok(
                 service.getTradeHistory(userId));
     }
+
+    @PostMapping("/reserve")
+    public ResponseEntity<String> reserveShares(
+            @RequestParam Long userId,
+            @RequestParam String stockSymbol,
+            @RequestParam Integer quantity) {
+
+        service.reserveShares(
+                userId,
+                stockSymbol,
+                quantity);
+
+        return ResponseEntity.ok(
+                "Shares reserved");
+    }
+
+    @PostMapping("/release")
+    public ResponseEntity<String> releaseReservedShares(
+            @RequestParam Long userId,
+            @RequestParam String stockSymbol,
+            @RequestParam Integer quantity) {
+
+        service.releaseReservedShares(
+                userId,
+                stockSymbol,
+                quantity);
+
+        return ResponseEntity.ok(
+                "Reserved shares released");
+    }
+
+    @PostMapping("/consume")
+    public ResponseEntity<String> consumeReservedShares(
+            @RequestParam Long userId,
+            @RequestParam String stockSymbol,
+            @RequestParam Integer quantity) {
+
+        service.consumeReservedShares(
+                userId,
+                stockSymbol,
+                quantity);
+
+        return ResponseEntity.ok(
+                "Reserved shares consumed");
+    }
 }
