@@ -292,9 +292,6 @@ public class PortfolioServiceImpl implements PortfolioService {
         portfolio.setReservedQuantity(
                 portfolio.getReservedQuantity() - quantity);
 
-        portfolio.setQuantity(
-                portfolio.getQuantity() - quantity);
-
         repository.save(portfolio);
     }
 }
